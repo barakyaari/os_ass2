@@ -30,9 +30,10 @@ int
 allocpid(void) 
 {
   int pid;
-  acquire(&ptable.lock);
-  pid = nextpid++;
-  release(&ptable.lock);
+  pid = nextpid;
+  while(!cas(&nextpid, nextpid, nextpid+1)){
+  	pid = nextpid;
+  }
   return pid;
 }
 //PAGEBREAK: 32
@@ -46,17 +47,15 @@ allocproc(void)
   struct proc *p;
   char *sp;
 
-  acquire(&ptable.lock);
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    if(p->state == UNUSED)
-      goto found;
-  release(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+       if(cas(&(p->state), UNUSED, EMBRYO)){
+  	 	 goto found;
+  	}
+  	  			  cprintf("not unused: %d\n", p);
+
+  }
   return 0;
-
-found:
-  p->state = EMBRYO;  
-  release(&ptable.lock);
-
+  found:
   p->pid = allocpid();
 
   // Allocate kernel stack.
