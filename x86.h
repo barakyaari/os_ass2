@@ -144,24 +144,6 @@ lcr3(uint val)
   asm volatile("movl %0,%%cr3" : : "r" (val));
 }
 
-static inline int
-cas(volatile int *addr, int expected, int newval){
-
-	int result = 1;
-	  asm volatile(
-	  	"lock; cmpxchgl %3, (%2)   \n\t"
-
-	  	"jz success \n\t"
-		//fail:
-	  	"movl $0, %0\n\t"
-	  	"success:\n\t"
-	  	: "=m"(result)
-	  	:  "r" (expected), "r" (addr), "r"(newval)
-	    : "memory");
-	  return result;
-}
-
-
 //PAGEBREAK: 36
 // Layout of the trap frame built on the stack by the
 // hardware and by trapasm.S, and passed to trap().
