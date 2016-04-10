@@ -1,6 +1,5 @@
 struct stat;
 struct rtcdate;
-typedef void (*sig_handler)(int pid, int value);
 
 // system calls
 int fork(void);

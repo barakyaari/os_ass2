@@ -6,6 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+typedef void (*sig_handler)(int pid, int value);
 
 struct {
   struct spinlock lock;
@@ -492,4 +493,8 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+sig_handler sigset(sig_handler handler){
+  return 0;
 }
