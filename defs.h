@@ -9,6 +9,7 @@ struct spinlock;
 struct stat;
 struct superblock;
 
+typedef void (*sig_handler)(int pid, int value);
 
 // bio.c
 void            binit(void);
@@ -119,6 +120,12 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
+sig_handler     sigset(sig_handler);
+int 			sigsend(int dest_pid, int value);
+void 			sidget(void);
+int 			sigpause(void);
+
+
 
 // swtch.S
 void            swtch(struct context**, struct context*);

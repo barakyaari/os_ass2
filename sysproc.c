@@ -40,6 +40,7 @@ int
 sys_getpid(void)
 {
   return proc->pid;
+
 }
 
 int

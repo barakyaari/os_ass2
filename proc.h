@@ -1,5 +1,6 @@
 // Segments in proc->gdt.
 #define NSEGS     7
+typedef void (*sig_handler)(int pid, int value);
 
 // Per-CPU state
 struct cpu {
@@ -51,6 +52,31 @@ struct context {
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
+//defines an element of the concurrent struct
+struct cstackframe {
+  int sender_pid;
+  int recepient_pid;
+  int value;
+  int used;
+  struct cstackframe *next;
+};
+
+//defines a concurrent stack
+struct cstack {
+  struct cstackframe frames[10];
+  struct cstackframe *head;
+};
+
+//adds a new frame to the cstack which is initialized with
+//values sender_pid, recepient_pid and value, athen returns 1 on success
+//and 0 if the stack is full.
+int push(struct cstack *cstack, int sender_pid, int recepient_pid, int value);
+
+//removes and returns an element form the head of given cstack.
+//if the stack is empty, then returns 0.
+struct cstackframe *pop(struct cstack *cstack);
+
+
 // Per-process state
 struct proc {
   uint sz;                     // Size of process memory (bytes)
@@ -66,6 +92,8 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+  sig_handler* handler;        // A pointer to the current handler
+  cstack pending_signals;
 };
 
 // Process memory is laid out contiguously, low addresses first:

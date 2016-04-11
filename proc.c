@@ -6,6 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+
 typedef void (*sig_handler)(int pid, int value);
 
 struct {
@@ -52,7 +53,6 @@ allocproc(void)
        if(cas(&(p->state), UNUSED, EMBRYO)){
   	 	 goto found;
   	}
-  	  			  cprintf("not unused: %d\n", p);
 
   }
   return 0;
@@ -79,6 +79,9 @@ allocproc(void)
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
+    //Initialize handler:
+  p->handler = (sig_handler*) -1;
+
 
   return p;
 }
@@ -108,6 +111,9 @@ userinit(void)
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
+
+  //Initialize handler:
+  p->handler = (sig_handler*) -1;
 
   p->state = RUNNABLE;
 }
@@ -155,6 +161,9 @@ fork(void)
   np->sz = proc->sz;
   np->parent = proc;
   *np->tf = *proc->tf;
+
+  //Copy the signal handler from the parent:
+  np->handler = proc->handler;
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -431,8 +440,8 @@ void
 wakeup(void *chan)
 {
   acquire(&ptable.lock);
-  wakeup1(chan);
-  release(&ptable.lock);
+  wakeup1(chan)
+  ;release(&ptable.lock);
 }
 
 // Kill the process with the given pid.
@@ -442,6 +451,7 @@ int
 kill(int pid)
 {
   struct proc *p;
+
 
   acquire(&ptable.lock);
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
@@ -495,6 +505,65 @@ procdump(void)
   }
 }
 
-sig_handler sigset(sig_handler handler){
+sig_handler sys_sigset(sig_handler handler){
+      cprintf("sys_sigset has been called!\n");
+  (*handler)(2,5);
+  sig_handler* oldHandler = proc->handler;
+  proc->handler = (sig_handler*)handler;
+  (*(proc->handler))(2, 5);
+
+  return (sig_handler)oldHandler;
+}
+
+int sys_sigsend(int dest_pid, int value){
+
+
   return 0;
 }
+
+void      sys_sigret(void){
+}
+
+int       sys_sigpause(void){
+  return 0;
+}
+
+//adds a new frame to the cstack which is initialized with
+//values sender_pid, recepient_pid and value, then returns 1 on success
+//and 0 if the stack is full.
+int push(struct cstack *cstack, int sender_pid, int recepient_pid, int value){
+  //Allocate a free cstackframe:
+  for(int i = 0; i < 10; i++){
+    cstackframe frame = cstack->frames[i];
+    if(cas(&frame->used, 0, 1)){
+       goto found;
+    }
+  }
+  return 0;
+
+  //add the free cstackframe to the head of the cstack:
+   found:
+
+   frame->next = cstack->head;
+   while(!cas(&cstack->head, frame->next, frame)){
+    frame->next = cstack->head;
+   }
+   cstack->head = frame;
+    frame->sender_pid = sender_pid;
+    frame->recepient_pid = recepient_pid;
+    frame->value = value;
+  }
+  return 1;
+}
+
+struct cstackframe *pop(struct cstack *cstack){
+  if(cstack->head == 0)
+    return 0;
+  cstackframe ans = cstack->head;
+  while(!cas(&cstack->head, ans, ans->next)){
+    ans = cstack->head;
+  }
+  //Should "used" be changed here??
+  return ans;
+}
+
