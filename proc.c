@@ -573,8 +573,6 @@ void      sys_sigret(void){
 
 //Suspend the process until a new signal is received
 int sys_sigpause(void){
-    cprintf("sigpause called!\n");
-    printPendingSignals();
  acquire(&ptable.lock);
 for(;;){
   proc->chan = (int)proc;
