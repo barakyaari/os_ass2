@@ -19,7 +19,7 @@ static struct proc *initproc;
 int nextpid = 1;
 extern void forkret(void);
 extern void trapret(void);
-
+struct cstackframe;
 static void wakeup1(void *chan);
 
 void
@@ -533,8 +533,10 @@ int       sys_sigpause(void){
 //and 0 if the stack is full.
 int push(struct cstack *cstack, int sender_pid, int recepient_pid, int value){
   //Allocate a free cstackframe:
-  for(int i = 0; i < 10; i++){
-    cstackframe frame = cstack->frames[i];
+	int i;
+	struct cstackframe *frame;
+  for(i = 0; i < 10; i++){
+ frame = &cstack->frames[i];
     if(cas(&frame->used, 0, 1)){
        goto found;
     }
@@ -545,22 +547,21 @@ int push(struct cstack *cstack, int sender_pid, int recepient_pid, int value){
    found:
 
    frame->next = cstack->head;
-   while(!cas(&cstack->head, frame->next, frame)){
+   while(!cas(&cstack->head, *frame->next, *frame)){
     frame->next = cstack->head;
    }
    cstack->head = frame;
     frame->sender_pid = sender_pid;
     frame->recepient_pid = recepient_pid;
     frame->value = value;
-  }
   return 1;
 }
 
 struct cstackframe *pop(struct cstack *cstack){
   if(cstack->head == 0)
     return 0;
-  cstackframe ans = cstack->head;
-  while(!cas(&cstack->head, ans, ans->next)){
+  struct cstackframe *ans = cstack->head;
+  while(!cas(&cstack->head, (int)ans, (int)ans->next)){
     ans = cstack->head;
   }
   //Should "used" be changed here??
