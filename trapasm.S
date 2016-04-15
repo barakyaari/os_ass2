@@ -1,3 +1,4 @@
+
 #include "mmu.h"
 
   # vectors.S sends all traps here.
@@ -26,6 +27,10 @@ alltraps:
   # Return falls through to trapret...
 .globl trapret
 trapret:
+  
+
+  call backupTrapFrame
+
   popal
   popl %gs
   popl %fs
@@ -33,3 +38,8 @@ trapret:
   popl %ds
   addl $0x8, %esp  # trapno and errcode
   iret
+
+  code_start:
+  movl $24, %eax #sigret system call number
+  int $64
+  code_end:

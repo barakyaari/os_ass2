@@ -9,6 +9,7 @@
 #include "param.h"
 #include "stat.h"
 #include "mmu.h"
+#include "x86.h"
 #include "proc.h"
 #include "fs.h"
 #include "file.h"
@@ -54,7 +55,7 @@ sys_dup(void)
 {
   struct file *f;
   int fd;
-  
+
   if(argfd(0, 0, &f) < 0)
     return -1;
   if((fd=fdalloc(f)) < 0)
@@ -92,7 +93,7 @@ sys_close(void)
 {
   int fd;
   struct file *f;
-  
+
   if(argfd(0, &fd, &f) < 0)
     return -1;
   proc->ofile[fd] = 0;
@@ -105,7 +106,7 @@ sys_fstat(void)
 {
   struct file *f;
   struct stat *st;
-  
+
   if(argfd(0, 0, &f) < 0 || argptr(1, (void*)&st, sizeof(*st)) < 0)
     return -1;
   return filestat(f, st);
@@ -353,7 +354,7 @@ sys_mknod(void)
   char *path;
   int len;
   int major, minor;
-  
+
   begin_op();
   if((len=argstr(0, &path)) < 0 ||
      argint(1, &major) < 0 ||

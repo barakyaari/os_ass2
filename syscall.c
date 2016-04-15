@@ -3,8 +3,8 @@
 #include "param.h"
 #include "memlayout.h"
 #include "mmu.h"
-#include "proc.h"
 #include "x86.h"
+#include "proc.h"
 #include "syscall.h"
 
 // User code makes a system call with INT T_SYSCALL.
@@ -55,7 +55,7 @@ int
 argptr(int n, char **pp, int size)
 {
   int i;
-  
+
   if(argint(n, &i) < 0)
     return -1;
   if((uint)i >= proc->sz || (uint)i+size > proc->sz)
