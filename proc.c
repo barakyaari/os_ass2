@@ -570,6 +570,12 @@ return push(&p->pending_signals, proc->pid, dest_pid, value);
 }
 
 void      sys_sigret(void){
+	if(proc){
+		//restore backup trapframe:
+		proc->tf = &proc->trapFrameCopy;
+		proc->isHandlingSignal = 0;
+
+	}
 }
 
 //Suspend the process until a new signal is received
@@ -639,30 +645,44 @@ struct cstackframe *pop(struct cstack *cstack){
 return ans;
 }
 
+extern int code_start();
+extern int code_end();
+
+
 void backupTrapFrame(){
-	proc->trapFrameCopy.edi = proc->tf->edi;
-	proc->trapFrameCopy.esi = proc->tf->esi;
-	proc->trapFrameCopy.ebp = proc->tf->ebp;
-	proc->trapFrameCopy.oesp = proc->tf->oesp;
-	proc->trapFrameCopy.ebx = proc->tf->ebx;
-	proc->trapFrameCopy.edx = proc->tf->edx;
-	proc->trapFrameCopy.ecx = proc->tf->ecx;
-	proc->trapFrameCopy.eax = proc->tf->eax;
-	proc->trapFrameCopy.gs = proc->tf->gs;
-	proc->trapFrameCopy.padding1 = proc->tf->padding1;
-	proc->trapFrameCopy.fs = proc->tf->fs;
-	proc->trapFrameCopy.padding2 = proc->tf->padding2;
-	proc->trapFrameCopy.es = proc->tf->es;	
-	proc->trapFrameCopy.padding3 = proc->tf->padding3;
-	proc->trapFrameCopy.ds = proc->tf->ds;
-	proc->trapFrameCopy.padding4 = proc->tf->padding4;
-	proc->trapFrameCopy.trapno = proc->tf->trapno;
-	proc->trapFrameCopy.err = proc->tf->err;
-	proc->trapFrameCopy.eip = proc->tf->eip;
-	proc->trapFrameCopy.cs = proc->tf->cs;
-	proc->trapFrameCopy.padding5 = proc->tf->padding5;
-	proc->trapFrameCopy.eflags = proc->tf->eflags;
-	proc->trapFrameCopy.esp = proc->tf->esp;
-	proc->trapFrameCopy.ss = proc->tf->ss;
-	proc->trapFrameCopy.padding6 = proc->tf->padding6;
+	if(proc){
+		if(cas(&proc->isHandlingSignal, 0, 1)){
+		struct cstackframe *frame = pop(&proc->pending_signals);
+	 	if(frame){
+	 	if(proc->handler != (sig_handler*)-1){
+			proc->trapFrameCopy = *proc->tf;
+			int bytesToCopy = (int)&code_end - (int)&code_start;
+		 	uint espMinus4 = proc->tf->esp - 4;
+		 	uint padding = bytesToCopy + (4-(bytesToCopy%4));
+	 	
+		 	//Set esp to include padding:
+		 	proc->tf->esp -= padding;
+
+			//Copy the call to sigret and interrupt to the
+			//User stack:
+			memmove(&espMinus4, &code_start, bytesToCopy);
+
+			//Set the function (the handler):
+			proc->tf->esp -= 4;
+		    *(int*)proc->tf->esp = frame->value;
+
+		    //Set the sender_pid:
+			proc->tf->esp -= 4;
+		    *(int*)proc->tf->esp = frame->sender_pid;
+
+			//Set the return address:
+			proc->tf->esp -= 4;
+		    *(uint*)proc->tf->esp = espMinus4;
+		}
+		}
+		else{
+			proc->isHandlingSignal = 0;
+		}
+	}
 }
+	}

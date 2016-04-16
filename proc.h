@@ -95,6 +95,7 @@ struct proc {
   sig_handler* handler;        // A pointer to the current handler
   struct cstack pending_signals;
   struct trapframe trapFrameCopy;
+  int isHandlingSignal;
 };
 
 // Process memory is laid out contiguously, low addresses first:

@@ -1,5 +1,7 @@
 
 #include "mmu.h"
+.globl code_start
+.globl code_end
 
   # vectors.S sends all traps here.
 .globl alltraps
