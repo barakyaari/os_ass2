@@ -29,7 +29,7 @@ main(int argc, char *argv[]){
 	for(i = 0; i < n; i++){
 			int pid = fork();
 			if(pid == 0){ // Is child process?
-				sigset((int*)myHandler);
+				sigset((sig_handler)myHandler);
 				sigpause();
 				exit();
 			}

@@ -1,12 +1,10 @@
 #include "types.h"
 #include "user.h"
+typedef void (*sig_handler)(int pid, int value);
 
-int myHandler(int value){
+sig_handler myHandler(int pid, int value){
   printf(1, "myHandler!\n");
-  if(value == 0){
-  	printf(1, "workder %d exit\n", getpid());
-  }
-  return -1;
+  return (sig_handler)-1;  	
 }
 
 int
@@ -15,7 +13,7 @@ main(int argc, char *argv[]){
 	printf(1, "*************************************\n");
 
 	printf(1, "My pid is: %d\n", getpid());
-		sigset((int*) myHandler);
+		sigset((sig_handler)myHandler);
 
 	if(fork() == 0){
 		printf(1, "calling Sigsend\n");
@@ -27,7 +25,7 @@ main(int argc, char *argv[]){
 
 	}
 	else{
-		sigset((int*) myHandler);
+		sigset((sig_handler)myHandler);
 		printf(1, "Signal set!!!!!\n");
 		sigpause();
 	}

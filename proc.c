@@ -98,7 +98,7 @@ p->context = (struct context*)sp;
 memset(p->context, 0, sizeof *p->context);
 p->context->eip = (uint)forkret;
     //Initialize handler:
-p->handler = (sig_handler) -1;
+p->handler = (sig_handler*) -1;
 
 int i;
 
@@ -140,7 +140,7 @@ p->tf->esp = PGSIZE;
 p->cwd = namei("/");
 
   //Initialize handler:
-p->handler = (sig_handler) -1;
+p->handler = (sig_handler*) -1;
 
 p->state = RUNNABLE;
 }
@@ -532,15 +532,29 @@ procdump(void)
   }
 }
 
-sig_handler sys_sigset(sig_handler handler){
-  cprintf("sys_sigset has been called!\n");
-sig_handler oldHandler = proc->handler;
-cprintf("old halndler: %d new handler: %d\n", oldHandler, handler);
+int sys_sigset(sig_handler handler){
+  if(!proc)
+      return -1;
+  sig_handler sigHandler;
+  if(argptr(0, (char**)&sigHandler, sizeof(sig_handler*)) < 0){
+    return -1;
+  }
+        
+    sig_handler* oldHandler = proc->handler;
+    proc->handler = (sig_handler*)sigHandler;
+    return (int)(oldHandler);
+  }
 
-proc->handler = (sig_handler)handler;
 
-return (sig_handler)oldHandler;
-}
+// sig_handler sigset(sig_handler signalHandler){
+//     if(!proc)
+//       return (void*) -1;
+//     if(!(proc->tf->cs & 3)==3)
+//       return (void*) -1;
+//     sig_handler* oldHandler = proc->handler;
+//     proc->handler = (sig_handler*)signalHandler;
+//     return (sig_handler)(oldHandler);
+// }
 
 int sys_sigsend(void){
   int value, dest_pid;
@@ -570,11 +584,13 @@ push(&p->pending_signals, proc->pid, dest_pid, value);
 return 0;
 }
 
-sig_handler sys_sigret(sig_handler newHandler){
+void sys_sigret(void){
 	cprintf("Sigret function called!\n");
-  sig_handler ans = proc->handler;
-	proc->handler = newHandler;
-  return ans;
+  *proc->tf = proc->trapFrameCopy;
+
+  sig_handler *ans = proc->handler;
+	proc->handler = ans;
+  proc->isHandlingSignal = 0;
 }
 
 //Suspend the process until a new signal is received
@@ -660,15 +676,16 @@ extern int code_start();
 extern int code_end();
 
 
-void backupTrapFrame(){
-	if(proc){
+void do_signal(struct trapframe* tf){
+	 if(!proc)
+      return;
 
 		if(cas(&proc->isHandlingSignal, 0, 1)){
 
 		struct cstackframe *frame = pop(&proc->pending_signals);
 	 	if(frame){
 
-	 	if(proc->handler != (sig_handler)-1){
+	 	if(proc->handler != (sig_handler*)-1){
 
 			proc->trapFrameCopy = *proc->tf;
 			int bytesToCopy = (int)&code_end - (int)&code_start;
@@ -678,8 +695,8 @@ void backupTrapFrame(){
 
 			//Copy the call to sigret and interrupt to the
 			//User stack:
-			memmove(&proc->tf->esp, code_start, bytesToCopy);
-      uint espBackup = proc->tf->esp - 4;
+			memmove((void*)proc->tf->esp, code_start, bytesToCopy);
+      uint espBackup = proc->tf->esp;
 
 			//Set the function (the handler):
 			proc->tf->esp -= 4;
@@ -698,12 +715,9 @@ void backupTrapFrame(){
 
 		    //The signal handler's code should run after returning from the
 		    //Kernnel/
-		    proc->tf->eip = (uint)proc->handler;
+		   proc->tf->eip = (uint)proc->handler;
+       frame->used = 0;
 		}
-		}
-		else{
-			proc->isHandlingSignal = 0;
 		}
 	}
 }
-	}

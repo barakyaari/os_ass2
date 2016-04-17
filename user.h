@@ -26,7 +26,7 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
-int sigset(int*);
+sig_handler sigset(sig_handler);
 int sigsend(int dest_pid, int value);
 void sigret(void);
 int sigpause(void);

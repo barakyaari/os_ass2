@@ -120,8 +120,8 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
-sig_handler     sigset(sig_handler myHandler);
-int 			sigsend(int dest_pid, int value);
+sig_handler     sigset(sig_handler);
+int 			sigsend(int, int);
 void 			sidget(void);
 int 			sigpause(void);
 

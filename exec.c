@@ -93,7 +93,7 @@ exec(char *path, char **argv)
   proc->sz = sz;
   proc->tf->eip = elf.entry;  // main
   proc->tf->esp = sp;
-  proc->handler =(sig_handler) -1;
+  proc->handler =(sig_handler*) -1;
   switchuvm(proc);
   freevm(oldpgdir);
   return 0;

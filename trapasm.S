@@ -31,7 +31,7 @@ alltraps:
 trapret:
   
   pushl %esp
-  call backupTrapFrame
+  call do_signal
   addl $4, %esp
 
   popal
