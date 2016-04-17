@@ -30,8 +30,9 @@ alltraps:
 .globl trapret
 trapret:
   
-
+  pushl %esp
   call backupTrapFrame
+  addl $4, %esp
 
   popal
   popl %gs

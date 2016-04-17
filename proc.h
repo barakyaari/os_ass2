@@ -65,6 +65,7 @@ struct cstackframe {
 struct cstack {
   struct cstackframe frames[10];
   struct cstackframe *head;
+  int signalsCount;
 };
 
 //adds a new frame to the cstack which is initialized with
@@ -92,7 +93,7 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
-  sig_handler* handler;        // A pointer to the current handler
+  sig_handler handler;        // A pointer to the current handler
   struct cstack pending_signals;
   struct trapframe trapFrameCopy;
   int isHandlingSignal;

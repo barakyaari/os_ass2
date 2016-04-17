@@ -98,7 +98,7 @@ p->context = (struct context*)sp;
 memset(p->context, 0, sizeof *p->context);
 p->context->eip = (uint)forkret;
     //Initialize handler:
-p->handler = (sig_handler*) -1;
+p->handler = (sig_handler) -1;
 
 int i;
 
@@ -140,7 +140,7 @@ p->tf->esp = PGSIZE;
 p->cwd = namei("/");
 
   //Initialize handler:
-p->handler = (sig_handler*) -1;
+p->handler = (sig_handler) -1;
 
 p->state = RUNNABLE;
 }
@@ -534,21 +534,21 @@ procdump(void)
 
 sig_handler sys_sigset(sig_handler handler){
   cprintf("sys_sigset has been called!\n");
-(*handler)(2,5);
-sig_handler* oldHandler = proc->handler;
-proc->handler = (sig_handler*)handler;
-(*(proc->handler))(2, 5);
+sig_handler oldHandler = proc->handler;
+cprintf("old halndler: %d new handler: %d\n", oldHandler, handler);
+
+proc->handler = (sig_handler)handler;
 
 return (sig_handler)oldHandler;
 }
 
 int sys_sigsend(void){
   int value, dest_pid;
-  cprintf("sigsend called!\n");
 if(argint(0, &dest_pid) < 0 || argint(1, &value) < 0){
   cprintf("%s", "Error in args:");
   return -1;
 }
+  cprintf("sigsend called: value=%d, dest_pid=%d\n", value, dest_pid);
 
     //for debugging:
 if(value == 101){
@@ -559,23 +559,22 @@ if(value == 101){
 struct proc* p;
 for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
  if(p->pid == dest_pid){
-  cprintf("Found the process with pid: %d\n", dest_pid);
   goto found;
 }
 }
 return -1;
 found:
-cprintf("got a process: %d\n", p->pid);
-return push(&p->pending_signals, proc->pid, dest_pid, value);
+cprintf("pushing signal to process number: %d\n", p->pid);
+push(&p->pending_signals, proc->pid, dest_pid, value);
+//wakeup(&proc->pending_signals);
+return 0;
 }
 
-void      sys_sigret(void){
-	if(proc){
-		//restore backup trapframe:
-		proc->tf = &proc->trapFrameCopy;
-		proc->isHandlingSignal = 0;
-
-	}
+sig_handler sys_sigret(sig_handler newHandler){
+	cprintf("Sigret function called!\n");
+  sig_handler ans = proc->handler;
+	proc->handler = newHandler;
+  return ans;
 }
 
 //Suspend the process until a new signal is received
@@ -592,7 +591,6 @@ for(;;){
     proc->state = RUNNING;      
     release(&ptable.lock);
         cprintf("Got signal! waking up...!\n");
-
     return 0;
   }
 }
@@ -619,29 +617,42 @@ for(i = 0; i < 10; i++){
 }
 return -1;
 
-              //add the free cstackframe to the head of the cstack:
+//add the free cstackframe to the head of the cstack:
 found:
-
+//Check for empty stack:
+if(cas((int*)&cstack->head, 0, (int)frame)){
+  cprintf("first signal added...\n");
+  frame->next = 0;
+}
+else{
 frame->next = cstack->head;
 while(!cas((int*)&cstack->head, (int)frame->next, (int)frame)){
   frame->next = cstack->head;
+  cprintf("Trying next...\n");
 }
-cstack->head = frame;
+}
+cstack->signalsCount++;
 frame->sender_pid = sender_pid;
 frame->recepient_pid = recepient_pid;
 frame->value = value;
+
+cprintf("Pushed ! number of signals: %d \n", cstack->signalsCount);
+//wakeup(&proc->pending_signals);
+
 return 0;
 }
 
 struct cstackframe *pop(struct cstack *cstack){
-  if(cstack->head == 0)
+    if(cstack->head == 0)
     return 0;
-  struct cstackframe *ans = 0;
+
+  struct cstackframe *ans = cstack->head;
   ans->next = cstack->head;
-  while(!cas((int*)&cstack->head, (int)ans->next, (int)ans)){
-  ans->next = cstack->head;
-}
+  while(!cas((int*)&cstack->head, (int)ans, (int)ans->next)){
+    ans = cstack->head;
+  }
   //Should "used" be changed here??
+  cstack->signalsCount--;
 return ans;
 }
 
@@ -651,21 +662,24 @@ extern int code_end();
 
 void backupTrapFrame(){
 	if(proc){
+
 		if(cas(&proc->isHandlingSignal, 0, 1)){
+
 		struct cstackframe *frame = pop(&proc->pending_signals);
 	 	if(frame){
-	 	if(proc->handler != (sig_handler*)-1){
+
+	 	if(proc->handler != (sig_handler)-1){
+
 			proc->trapFrameCopy = *proc->tf;
 			int bytesToCopy = (int)&code_end - (int)&code_start;
-		 	uint espMinus4 = proc->tf->esp - 4;
-		 	uint padding = bytesToCopy + (4-(bytesToCopy%4));
 	 	
 		 	//Set esp to include padding:
-		 	proc->tf->esp -= padding;
+		 	proc->tf->esp -= bytesToCopy;
 
 			//Copy the call to sigret and interrupt to the
 			//User stack:
-			memmove(&espMinus4, &code_start, bytesToCopy);
+			memmove(&proc->tf->esp, code_start, bytesToCopy);
+      uint espBackup = proc->tf->esp - 4;
 
 			//Set the function (the handler):
 			proc->tf->esp -= 4;
@@ -677,7 +691,14 @@ void backupTrapFrame(){
 
 			//Set the return address:
 			proc->tf->esp -= 4;
-		    *(uint*)proc->tf->esp = espMinus4;
+		    *(uint*)proc->tf->esp = espBackup;
+        cprintf("Got here!\n");
+        cprintf("Proc handler: %d\n", proc->handler);
+
+
+		    //The signal handler's code should run after returning from the
+		    //Kernnel/
+		    proc->tf->eip = (uint)proc->handler;
 		}
 		}
 		else{
