@@ -97,6 +97,8 @@ exec(char *path, char **argv)
 
   //Reset the pending signals:
   proc->pending_signals.head = &(proc->pending_signals.frames[0]);
+  
+
   switchuvm(proc);
   freevm(oldpgdir);
   return 0;

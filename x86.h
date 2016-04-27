@@ -144,32 +144,19 @@ lcr3(uint val)
   asm volatile("movl %0,%%cr3" : : "r" (val));
 }
 
-static inline int cas(volatile int * addr , int expected , int newval){
-  int result = 1;
-asm volatile( "lock; cmpxchgl %3, (%2) \n\t"
-          "jz passed \n\t"
-          //failed 
-          "movl $0, %0 \n\t"
-          "passed:\n\t"
-          :"=m" (result)
-          :"a" (expected), "r"(addr), "r" (newval)
-          : "memory");
- return result;
-
-  
-}
-
 static inline int
-cas2(volatile int *addr, int expected, int newval){
+cas(volatile int *addr, int expected, int newval){
 
 	int result = 1;
 	  asm volatile(
 	  	"lock; cmpxchgl %3, (%2)   \n\t"
 
-	  	"jz success \n\t"
+	  	"jz isSuccess \n\t"
 		//fail:
 	  	"movl $0, %0\n\t"
-	  	"success:\n\t"
+
+	  	"isSuccess:\n\t"
+
 	  	: "=m"(result)
 	  	:  "r" (expected), "r" (addr), "r"(newval)
 	    : "memory");

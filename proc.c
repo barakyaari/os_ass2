@@ -41,49 +41,47 @@ void printpending_signals(){
 }
 
 void
-pinit2(void)
-{
-  initlock(&ptable.lock, "ptable");
-}
-
-void
 pinit(void)
 {
-    struct proc * p;
+  struct proc * p;
   int i;
 
   initlock(&ptable.lock, "ptable");
   acquire(&ptable.lock);
-  //runs before the init process starts running, this lock is redundant
+//Set the pendingSignals and signal variables:
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   {
     p->pending_signals.head = &(p->pending_signals.frames[0]);
-    for(i = 0; i < 9; i++)
-      p->pending_signals.frames[i].next = &p->pending_signals.frames[i + 1];
+
     p->pending_signals.frames[9].next = 0;
+
+    for(i = 0; i < 9; i++){
+      //Set the next signal for the frames:
+      p->pending_signals.frames[i].next = &p->pending_signals.frames[i + 1];
+    }
+
     p->isHandlingSignal = 0;
   }
-  release(&ptable.lock);
-}
+  release(&ptable.lock);}
 
-int 
-allocpid(void) 
-{
-  int pid;
-  pid = nextpid;
-  while(!cas(&nextpid, nextpid, nextpid+1)){
-   pid = nextpid;
+  int 
+  allocpid(void) 
+  {
+    int pid;
+    pid = nextpid;
+    while(!cas(&nextpid, nextpid, nextpid+1)){
+     pid = nextpid;
+   }
+   return pid;
  }
- return pid;
-}
 //PAGEBREAK: 32
 // Look in the process table for an UNUSED proc.
 // If found, change state to EMBRYO and initialize
 // state required to run in the kernel.
 // Otherwise return 0.
-static struct proc*
-allocproc(void)
-{
+ static struct proc*
+ allocproc(void)
+ {
   struct proc *p;
   char *sp;
 
@@ -222,12 +220,12 @@ fork(void)
     pid = np->pid;
 
 
-  np->handler = proc->handler;
-  np->isHandlingSignal = 0;
-  np->pending_signals.head = &(np->pending_signals.frames[0]);
-  for (i = 0; i < 10; i++){
-    np->pending_signals.frames[i].used = 0;
-  }
+    np->handler = proc->handler;
+    np->isHandlingSignal = 0;
+    np->pending_signals.head = &(np->pending_signals.frames[0]);
+    for (i = 0; i < 10; i++){
+      np->pending_signals.frames[i].used = 0;
+    }
   // lock to force the compiler to emit the np->state write last.
     acquire(&ptable.lock);
     np->state = RUNNABLE;
@@ -559,16 +557,9 @@ wakeup1(void *chan)
   sig_handler sigset(sig_handler sigHandler){
     proc->handler = sigHandler;
     return sigHandler;
-  //Should We return the old handler??
   }
 
-  int sigsend2(int dest_pid, int value){
-    //for debugging:
-    if(value == 101){
-      printpending_signals();
-      return 0;
-    }
-
+  int sigsend(int dest_pid, int value){
     struct proc* process;
     for(process = ptable.proc; process < &ptable.proc[NPROC]; process++){
      if(process->pid == dest_pid){
@@ -583,119 +574,29 @@ wakeup1(void *chan)
 }
 
 
-int sigsend(int dest_pid, int value)
-{
-  struct proc *p;
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-  {   
-    if (p->pid == dest_pid)
-      break;
-  }
-  if (p >= &ptable.proc[NPROC] && (p->state != 2 || p->state != 3 || p->state != 4))
-    return -1;
-  else
-    return push(&(p->pending_signals), proc->pid, dest_pid, value);
-}
-
-void sigret(void)
-{
+void sigret(void){
+  //Copy the trapframe:
   memmove(proc->tf, &proc->trapFrameCopy, sizeof(proc->trapFrameCopy) );
   proc->isHandlingSignal = 0;
 }
 
-
-void sigret2(void){
-	cprintf("Sigret function called!\n");
-  *proc->tf = proc->trapFrameCopy;
-
-  void* ans = proc->handler;
-  proc->handler = ans;
-  proc->isHandlingSignal = 0;
-}
-
-
-int sigpause(void)
-{
-  struct proc* p=proc;
-  if (!p->pending_signals.head->used){
-      acquire(&ptable.lock);
-      //the sched's convention of  getting the ptable lock before it is being called
-      p->chan=(int)&p->handler;
-      p->state=SLEEPING;
-      sched();
-      release(&ptable.lock);
-  }
-  
-  return 0;
-}
-
-
 //Suspend the process until a new signal is received
-int sigpause2(void){
- while(1){
-  acquire(&ptable.lock);
-  proc->chan = (int)proc;
-  proc->state = SLEEPING;  
-  if(proc->pending_signals.head == 0){
-    sched();
-  }
-  else{
-    proc->chan = 0;
-    proc->state = RUNNING;      
+int sigpause(void){
+  struct proc* tmpProcess = proc;
+  if(proc->pending_signals.head->used == 0){
+    acquire(&ptable.lock);
+    tmpProcess->chan = (int)&tmpProcess->handler;
+    tmpProcess->state = SLEEPING; 
+    sched(); 
     release(&ptable.lock);
-    cprintf("Got signal! waking up...!\n");
-    return 0;
   }
-}
-return 0;
-}
-
-
-int push(struct cstack * cstack, int sender_pid, int recepient_pid, int value)
-{
-  struct cstackframe * oldHead;
-  struct cstackframe * newHead;
-  
-  do
-  {
-    oldHead = cstack->head;
-    if (oldHead == &cstack->frames[9])
-      return 0;
-    else if (oldHead->used)
-      newHead = oldHead + 1;
-    else
-      newHead = oldHead;
-  }while (!cas((int *)(&cstack->head), (int)oldHead, (int)newHead));
-  
-  do
-  {
-    newHead->recepient_pid = recepient_pid;
-  } while (!cas(&newHead->used, 0, 0));
-  newHead->value = value;
-  newHead->sender_pid = sender_pid;
-  newHead->used = 1;
-  
-  //wake proccess who sleeping on channel as a result of pause
-  struct proc* p;
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-  {   
-    if (p->pid == recepient_pid)
-      {
-  wakeup((void*)&p->handler);
-  break;
-      }
-  }
-  
-  return 1;
-  
-  
-  
+  return 0;
 }
 
 //adds a new frame to the cstack which is initialized with
 //values sender_pid, recepient_pid and value, then returns 1 on success
 //and 0 if the stack is full.
-int push2(struct cstack *cstack, int sender_pid, int recepient_pid, int value){
+int push(struct cstack *cstack, int sender_pid, int recepient_pid, int value){
               //Allocate a free cstackframe:
   int i;
   struct cstackframe *frame;
@@ -703,9 +604,9 @@ int push2(struct cstack *cstack, int sender_pid, int recepient_pid, int value){
   for(i = 0; i < 10; i++){
    frame = &cstack->frames[i];
    if(!frame->used){
-  foundFrame = i;
-  break;
-}
+    foundFrame = i;
+    break;
+  }
 }
 if(foundFrame == -1){
  return 0;
@@ -726,7 +627,6 @@ frame->sender_pid = sender_pid;
 frame->recepient_pid = recepient_pid;
 frame->value = value;
 frame->used = 1;
-cprintf("Pushed frame: %d\n", i);
 //Wakeup the process that is sleeping on channel:
 struct proc* p;
 for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
@@ -738,28 +638,7 @@ for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
 return 1;
 }
 
-struct cstackframe * pop(struct cstack * cstack)
-{
-  struct cstackframe * oldHead = cstack->head;
-  if (!oldHead->used && oldHead == cstack->frames)
-    return 0;
-  
-  struct cstackframe * newHead;
-  do
-  {
-    oldHead = cstack->head;
-    if (oldHead == cstack->frames)
-      newHead = oldHead;
-    else
-      newHead = oldHead - 1;
-  }while (!(cas(&oldHead->used, 1, 1) && cas((int *)(&cstack->head), (int)oldHead, (int)newHead)));
-
-  return oldHead;  
-  }
-
-
-
-struct cstackframe *pop2(struct cstack *cstack){
+struct cstackframe *pop(struct cstack *cstack){
   if(cstack->head == 0)
     return 0;
 
@@ -777,7 +656,7 @@ extern int code_start();
 extern int code_end();
 
 
-void do_signal2(struct trapframe* tf){
+void do_signal(void){
   struct cstackframe *stackframe;
 
   if(!proc)
@@ -797,79 +676,38 @@ void do_signal2(struct trapframe* tf){
     while(stackframe);
   }
 
-  else{
+  else if (!proc->isHandlingSignal){
+
     proc->isHandlingSignal = 1;
     //Copy trapframe:
     memmove(&proc->trapFrameCopy, proc->tf, sizeof(proc->trapFrameCopy));
     stackframe = pop(&proc->pending_signals);
     int bytesToCopy = (int)&code_end - (int)&code_start;
-
+    stackframe->used = 0;
 		 	//Set esp to include padding:
     proc->tf->esp -= bytesToCopy;
 
 			//Copy the call to sigret and interrupt to the
 			//User stack:
-    memmove((void*)proc->tf->esp, code_start, bytesToCopy);
-    uint espBackup = proc->tf->esp;
+    void * espBackup = (void *)(proc->tf->esp - bytesToCopy); //backup the return address from sig_handler which we wish to postpone after calling to sig_ret
+    memmove((void *)(proc->tf->esp - bytesToCopy),  code_start, bytesToCopy);//copy the injected code to the users stack
+    proc->tf->esp -= bytesToCopy;
 
-			//Set the function (the handler):
-    proc->tf->esp -= 4;
-    *(int*)proc->tf->esp = stackframe->value;
+    memmove((int *)(proc->tf->esp - sizeof(stackframe->value)),  &(stackframe->value), sizeof(stackframe->value)); //push sig_handler args to the stack
+    proc->tf->esp -= sizeof(stackframe->value);
+    memmove( (int *)((proc->tf->esp) - sizeof(stackframe->sender_pid)),  &(stackframe->sender_pid), sizeof(stackframe->sender_pid));
+    proc->tf->esp -= sizeof(stackframe->sender_pid);
 
-		    //Set the sender_pid:
-    proc->tf->esp -= 4;
-    *(int*)proc->tf->esp = stackframe->sender_pid;
+    memmove( (void **)((proc->tf->esp) - sizeof(void *)), &espBackup, sizeof(espBackup) ); //return address:
+    proc->tf->esp -= sizeof (void*);
 
-			//Set the return address:
-    proc->tf->esp -= 4;
-    *(uint*)proc->tf->esp = espBackup;
-    cprintf("Got here!\n");
-    cprintf("Proc handler: %d\n", proc->handler);
-
+    void * ebp = (void *) (proc->tf->ebp);
+    memmove( (void **)((proc->tf->esp) - sizeof(void *)), &ebp, sizeof(ebp) ); //stack pointer restore:
 
 		    //The signal handler's code should run after returning from the
 		    //Kernnel/
+    proc->tf->ebp = proc->tf->esp;
+
     proc->tf->eip = (uint)proc->handler;
   }
 }
-
-void do_signal(void){
-
-      struct cstackframe * csf;
-      if (proc && proc->pending_signals.head->used>0 && (proc->tf->cs & 3) == 3)
-      { //check if theres any pending signals which must be handled   
-  if ((int)proc->handler == -1)
-  {
-    do
-    {
-      csf = pop(&proc->pending_signals);
-    }while (csf);
-  }
-  else if (!proc->isHandlingSignal)
-  {
-    proc->isHandlingSignal = 1;
-    memmove(&proc->trapFrameCopy, proc->tf, sizeof(proc->trapFrameCopy)); //deep backup of  registers before sig_handler executed
-    struct proc *p = proc; //for debugging
-    csf = pop(&proc->pending_signals);
-    int sigVal = csf->value;
-    int sigSender = csf->sender_pid;
-    csf->used = 0;
-    //forcing user to execute SIG_RET
-    uint sigRetSysCallCodeSize = code_end - code_start; //declared as global in trapasm.S
-    void * espBackup = (void *)(proc->tf->esp - sigRetSysCallCodeSize); //backup the return address from sig_handler which we wish to postpone after calling to sig_ret
-    memmove((void *)(proc->tf->esp - sigRetSysCallCodeSize),  code_start, sigRetSysCallCodeSize);//copy the injected code to the users stack
-    proc->tf->esp -= sigRetSysCallCodeSize;
-    memmove((int *)(proc->tf->esp - sizeof(sigVal)),  &(sigVal), sizeof(sigVal)); //push sig_handler args to the stack
-    proc->tf->esp -= sizeof(sigVal);
-    memmove( (int *)((proc->tf->esp) - sizeof(sigSender)),  &(sigSender), sizeof(sigSender));
-    proc->tf->esp -= sizeof(sigSender);
-    memmove( (void **)((proc->tf->esp) - sizeof(void *)), &espBackup, sizeof(espBackup) ); //push "ret address" to be the begining of sig_ret code
-    proc->tf->esp -= sizeof(void*);
-    void * ebpBackup = (void *)(proc->tf->ebp);
-    memmove( (void **)((proc->tf->esp) - sizeof(void *)), &ebpBackup, sizeof(ebpBackup) ); //push "ret address" to be the begining of sig_ret code
-    proc->tf->ebp = proc->tf->esp;
-    proc->tf->eip = (uint)proc->handler;    //jump to sig handler code
-    p++;
-  }
-      }
-  }  

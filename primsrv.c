@@ -23,41 +23,7 @@ int isPrime(int n)
 	return 1;
 }
 
-
-void workerHandler(int pid, int value)
-{
-	if (value == 0)
-	{
-		int pid = getpid();
-		printf(1, "worker %d exit\n", pid);
-		exit();
-	}
-	else if (value > 0)
-	{
-		value++;
-		while(1)
-		{
-			if(isPrime(value))
-				break;
-			value++;
-		}
-		sigsend(pid, value);
-	}
-	else
-	{
-		value = value * -1;
-		value--;
-		while(1)
-		{
-			if(isPrime(value))
-				break;
-			value--;
-		}
-		sigsend(pid, value);
-	}
-}
-
-void workerHandler2(int pid, int value){
+void workerHandler(int pid, int value){
 	if(value == 0){
 		//On Zero all workers should exit.
 		printf(1, "worker %d exit\n", getpid());
@@ -121,31 +87,15 @@ void initializeWorkers(int n, struct worker* head){
 
 }
 
-int testHandler(int value){
-	printf(1, "myHandler!\n");
-	if(value == 0){
-		printf(1, "workder %d exit\n", getpid());
-	}
-	return -1;
-}
+void myHandler(int pid, int value){
+	struct worker * pointer = &worker;
 
-void myHandler(int pid, int value)
-{
-	struct worker * workerPtr = &worker;
-	while (workerPtr->pid != pid)
+	//get the correct worker (by pid):
+	while (pointer->pid != pid)
 	{
-		workerPtr = workerPtr->nextWorker;
+		pointer = pointer->nextWorker;
 	}
-	workerPtr->result = value;
-}
-
-
-void myHandler2(int pid, int value){
-	int i;
-	for(i = 0; i < numberOfWorkers; i++){
-
-	}
-
+	pointer->result = value;
 }
 
 void getResults(struct worker* head){
@@ -172,30 +122,12 @@ void sendSignalToWorker(int num, struct worker* head){
 	sigsend(head->pid, num);
 }
 
-void endExecution3(struct worker * workersHead)
-{
-	struct worker * w = workersHead;
-	while (w != 0)
-	{
-		sigsend(w->pid, 0);
-		w = w->nextWorker;
-		sleep(10);
-	}
-	w = workersHead;
-	while (w != 0)
-	{
-		wait();
-		w = w->nextWorker;
-	}
-	printf(1, "primsrv exit\n");
-}
-
 void endExecution(struct worker* head){
 	struct worker* pointer = head;
 	while(pointer != 0){//Send 0 to all workers:
 		sigsend(pointer->pid, 0);
 		pointer = pointer->nextWorker;
-		sleep(50);
+		sleep(15);
 	}
 	pointer = head;
 	while(pointer != 0){//Wait for the workers to actually exit:
