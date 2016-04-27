@@ -50,7 +50,7 @@ struct context {
   uint eip;
 };
 
-enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE};
 
 //defines an element of the concurrent struct
 struct cstackframe {
@@ -93,10 +93,11 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
-  sig_handler *handler;        // A pointer to the current handler
+  void (*handler)(int , int );
   struct cstack pending_signals;
   struct trapframe trapFrameCopy;
   int isHandlingSignal;
+  int framesUsed;
 };
 
 // Process memory is laid out contiguously, low addresses first:

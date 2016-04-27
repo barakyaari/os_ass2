@@ -62,7 +62,6 @@ sys_sleep(void)
 {
   int n;
   uint ticks0;
-  
   if(argint(0, &n) < 0)
     return -1;
   acquire(&tickslock);
@@ -89,4 +88,32 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+int sys_sigsend(void)
+{
+  int destPid;
+  int value;
+  if(argint(0, &destPid) < 0 || argint(1, &value) < 0){
+  return -1;
+} 
+return sigsend(destPid, value);
+}
+
+int
+sys_sigset(void)
+{
+  int sigHandler;
+  if(argint(0, &sigHandler) < 0)
+    return -1;
+  return (int)sigset((void*)sigHandler);
+}
+
+int sys_sigret(void){
+  sigret();
+  return 0;
+}
+int sys_sigpause(void){
+  sigpause();
+  return 0;
 }

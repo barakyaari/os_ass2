@@ -93,7 +93,10 @@ exec(char *path, char **argv)
   proc->sz = sz;
   proc->tf->eip = elf.entry;  // main
   proc->tf->esp = sp;
-  proc->handler =(sig_handler*) -1;
+  proc->handler =(void*) -1;
+
+  //Reset the pending signals:
+  proc->pending_signals.head = &(proc->pending_signals.frames[0]);
   switchuvm(proc);
   freevm(oldpgdir);
   return 0;
