@@ -265,9 +265,8 @@ exit(void)
 
 
 	pushcli();
-	//cas(&proc->state, RUNNING, ZOMBIEn);
-	proc->state = ZOMBIEn;
 	
+	while(!cas(&proc->state, RUNNING, ZOMBIEn));
 	//reset handler:
 	proc -> handler = (void*) - 1;
 	proc->pending_signals.head = &(proc->pending_signals.frames[0]);
@@ -278,20 +277,15 @@ exit(void)
 	}
 
 	//If parent is sleeping in wait:
-	if (proc->parent->state == SLEEPING)
-	wakeup1(proc->parent);
+	//wakeup1(proc->parent);
 
 	// Pass abandoned children to init.
 	for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
 		if (p->parent == proc) {
 			p->parent = initproc;
-
 			//Avoid zombien child:
-			while(p->state != ZOMBIE){
-
-			}
-
-			if (cas(&p->state, ZOMBIE, ZOMBIE)){
+			while(p->state == ZOMBIEn);
+			if (p->state == ZOMBIE){
 				wakeup1(initproc);
 			}
 		}
@@ -308,15 +302,13 @@ exit(void)
 int
 wait(void)
 {
-
 	struct proc *p;
 	int havekids, pid;
-
 	pushcli();
 	for (;;) {
 		proc->chan = (int)proc;
 		//cas(&proc->state, RUNNING , SLEEPINGn);
-		proc->state = SLEEPINGn;
+		while(!cas(&proc->state, RUNNING, SLEEPINGn));
 		// Scan through table looking for zombie children.
 		havekids = 0;
 		for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
@@ -324,9 +316,7 @@ wait(void)
 				continue;
 			havekids = 1;
 			//Avoid zombie busywait:
-	      	while (p->state != ZOMBIE){
-	      	}
-
+	      	while (p->state == ZOMBIEn);
 			if (p->state == ZOMBIE) {
 				// Found one.
 				cas(&p->state, ZOMBIE, UNUSEDn);
@@ -338,10 +328,10 @@ wait(void)
 				proc->chan = 0;
 				cas(&proc->state, SLEEPINGn, RUNNING);
 				cas(&proc->state, RUNNABLEn, RUNNING);
-
 				popcli();
 				return pid;
 			}
+		
 		}
 
 		// No point waiting if we don't have any children.
@@ -353,6 +343,7 @@ wait(void)
 		}
 
 		// Wait for children to exit.  (See wakeup1 call in proc_exit.)
+		
 		sched();
 	}
 }
@@ -431,8 +422,8 @@ sched(void)
 {
 	int intena;
 
-// if (holding(&ptable.lock))
-//    panic("sched ptable.lock");
+ if (holding(&ptable.lock))
+    panic("sched ptable.lock");
 	if (cpu->ncli != 1) {
 		cprintf("%s %d", "ncli is:", cpu->ncli);
 		panic("sched locks");
