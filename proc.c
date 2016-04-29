@@ -360,6 +360,7 @@ freeproc(struct proc *p)
 	freevm(p->pgdir);
 	p->killed = 0;
 	p->chan = 0;
+	p->state = ZOMBIE;
 }
 
 //PAGEBREAK: 42
@@ -382,6 +383,10 @@ scheduler(void)
 		// Loop over process table looking for process to run.
 		pushcli();
 		for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+			if(p->state != RUNNABLE) {
+       	 	continue;
+    	  }
+
 			if (!cas(&p->state, RUNNABLE, RUNNINGn))
 				continue;
 
@@ -393,25 +398,24 @@ scheduler(void)
 			p->state = RUNNING;
 			swtch(&cpu->scheduler, proc->context);
 			switchkvm();
-
+			cas(&p->state, RUNNABLEn, RUNNABLE);
+			cas(&p->state, SLEEPINGn, SLEEPING);
 			// Process is done running for now.
 			// It should have changed its p->state before coming back.
 			proc = 0;
 
 			//if a signal was caught
-			cas(&p->state, RUNNABLEn, RUNNABLE);
-			cas(&p->state, SLEEPINGn, SLEEPING);
+			
 
 			//if (p->state == ZOMBIE)
 			// freeproc(p);
 			if (p->state == ZOMBIEn) {
 				
-				if (!cas(&p->state, ZOMBIEn, ZOMBIE))
-					panic("schedualer 'cas' to ZOMBIE failed");
 				freeproc(p);
 				// Parent might be sleeping in wait().
 				wakeup1(p->parent);
 			}
+		proc = 0;
 		}
 		popcli();
 	}
@@ -504,8 +508,7 @@ wakeup1(void *chan)
 		if (p->state == SLEEPING && p->chan == (int)chan) {
 			// Tidy up.
 			p->chan = 0;
-			cas(&p->state, SLEEPING, RUNNABLE);
-			cas(&p->state, SLEEPINGn, -RUNNABLEn);
+			p->state = RUNNABLE;
 		}
 }
 
