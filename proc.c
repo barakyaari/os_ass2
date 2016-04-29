@@ -1,3 +1,4 @@
+
 #include "types.h"
 #include "defs.h"
 #include "param.h"
@@ -264,12 +265,32 @@ exit(void)
 
 	pushcli();
 	cas(&proc->state, RUNNING, ZOMBIEn);
+
+	//reset handler:
+	proc -> handler = (void*) - 1;
+	proc->pending_signals.head = &(proc->pending_signals.frames[0]);
+
+	int i;
+	for (i = 0; i < 10; i++) {
+		proc->pending_signals.frames[i].used = 0;
+	}
+
+	//If parent is sleeping in wait:
+	wakeup1(proc->parent);
+
 	// Pass abandoned children to init.
 	for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
 		if (p->parent == proc) {
 			p->parent = initproc;
-			if (cas(&p->state, ZOMBIE, ZOMBIE))
+
+			//Avoid zombien child:
+			while(p->state == ZOMBIEn){
+
+			}
+
+			if (cas(&p->state, ZOMBIE, ZOMBIE)){
 				wakeup1(initproc);
+			}
 		}
 	}
 
