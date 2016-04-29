@@ -8,21 +8,18 @@ void myHandler(int pid, int value){
 
 int
 main(int argc, char *argv[]){
-	printf(1, "     Welcome to Testing File!!!\n");
-	printf(1, "*************************************\n");
+	// printf(1, "     Welcome to Testing File!!!\n");
+	// printf(1, "*************************************\n");
 
-	printf(1, "My pid is: %d\n", getpid());
-		sigset((void*)myHandler);
-
-	if(fork() == 0){
-		printf(1, "calling Sigsend\n");
-		sigsend(4, 11);
-		//sigsend(4, 12);
-		//sigsend(4, 13);
-		sigpause();
-		sigsend(1, 101);
-
+	// printf(1, "My pid is: %d\n", getpid());
+	int i = 0;
+	for(i = 0; i < 10; i++){
+		if(fork() == 0){
+			goto done;
+		}
 	}
-	printf(1, "Pid: %d\n", getpid());
-	exit();
+	done:
+	// printf(1, "Pid: %d\n", getpid());
+	// exit();
+	return 0;
 }

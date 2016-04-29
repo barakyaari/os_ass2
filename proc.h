@@ -50,7 +50,7 @@ struct context {
 	uint eip;
 };
 
-enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE};
+enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE, RUNNABLEn, ZOMBIEn, SLEEPINGn, UNUSEDn, RUNNINGn};
 
 //defines an element of the concurrent struct
 struct cstackframe {
