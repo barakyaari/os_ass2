@@ -306,7 +306,7 @@ wait(void)
 	int havekids, pid;
 	pushcli();
 	for (;;) {
-		proc->chan = (int)proc;
+		
 		//cas(&proc->state, RUNNING , SLEEPINGn);
 		while(!cas(&proc->state, RUNNING, SLEEPINGn));
 		// Scan through table looking for zombie children.
@@ -343,7 +343,7 @@ wait(void)
 		}
 
 		// Wait for children to exit.  (See wakeup1 call in proc_exit.)
-		
+		proc->chan = (int)proc;
 		sched();
 	}
 }
