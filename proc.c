@@ -287,7 +287,7 @@ exit(void)
 			p->parent = initproc;
 
 			//Avoid zombien child:
-			while(p->state == ZOMBIEn){
+			while(p->state != ZOMBIE){
 
 			}
 
@@ -324,7 +324,7 @@ wait(void)
 				continue;
 			havekids = 1;
 			//Avoid zombie busywait:
-	      	while (p->state == ZOMBIEn){
+	      	while (p->state != ZOMBIE){
 	      	}
 
 			if (p->state == ZOMBIE) {
