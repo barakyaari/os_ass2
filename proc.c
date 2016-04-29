@@ -278,7 +278,7 @@ exit(void)
 	}
 
 	//If parent is sleeping in wait:
-	if (proc->parent.state == SLEEPING)
+	if (proc->parent->state == SLEEPING)
 	wakeup1(proc->parent);
 
 	// Pass abandoned children to init.
