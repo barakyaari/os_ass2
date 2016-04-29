@@ -278,7 +278,7 @@ exit(void)
 	}
 
 	//If parent is sleeping in wait:
-	wakeup1(proc->parent);
+	//wakeup1(proc->parent);
 
 	// Pass abandoned children to init.
 	for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
