@@ -319,15 +319,17 @@ wait(void)
 	      	while (p->state == ZOMBIEn);
 			if (p->state == ZOMBIE) {
 				// Found one.
-				cas(&p->state, ZOMBIE, UNUSEDn);
+				//cas(&p->state, ZOMBIE, UNUSEDn);
 				pid = p->pid;
 				p->pid = 0;
 				p->parent = 0;
 				p->name[0] = 0;
-				cas(&p->state, UNUSEDn, UNUSED);
+				//cas(&p->state, UNUSEDn, UNUSED);
+				p->state = UNUSED;
 				proc->chan = 0;
-				cas(&proc->state, SLEEPINGn, RUNNING);
-				cas(&proc->state, RUNNABLEn, RUNNING);
+				proc->state = RUNNING;
+				//cas(&proc->state, SLEEPINGn, RUNNING);
+				//cas(&proc->state, RUNNABLEn, RUNNING);
 				popcli();
 				return pid;
 			}
