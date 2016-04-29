@@ -4,17 +4,17 @@ typedef void (*sig_handler)(int pid, int value);
 
 // Per-CPU state
 struct cpu {
-  uchar id;                    // Local APIC ID; index into cpus[] below
-  struct context *scheduler;   // swtch() here to enter scheduler
-  struct taskstate ts;         // Used by x86 to find stack for interrupt
-  struct segdesc gdt[NSEGS];   // x86 global descriptor table
-  volatile uint started;       // Has the CPU started?
-  int ncli;                    // Depth of pushcli nesting.
-  int intena;                  // Were interrupts enabled before pushcli?
-  
-  // Cpu-local storage variables; see below
-  struct cpu *cpu;
-  struct proc *proc;           // The currently-running process.
+	uchar id;                    // Local APIC ID; index into cpus[] below
+	struct context *scheduler;   // swtch() here to enter scheduler
+	struct taskstate ts;         // Used by x86 to find stack for interrupt
+	struct segdesc gdt[NSEGS];   // x86 global descriptor table
+	volatile uint started;       // Has the CPU started?
+	int ncli;                    // Depth of pushcli nesting.
+	int intena;                  // Were interrupts enabled before pushcli?
+
+	// Cpu-local storage variables; see below
+	struct cpu *cpu;
+	struct proc *proc;           // The currently-running process.
 };
 
 extern struct cpu cpus[NCPU];
@@ -43,29 +43,29 @@ extern struct proc *proc asm("%gs:4");     // cpus[cpunum()].proc
 // at the "Switch stacks" comment. Switch doesn't save eip explicitly,
 // but it is on the stack and allocproc() manipulates it.
 struct context {
-  uint edi;
-  uint esi;
-  uint ebx;
-  uint ebp;
-  uint eip;
+	uint edi;
+	uint esi;
+	uint ebx;
+	uint ebp;
+	uint eip;
 };
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE};
 
 //defines an element of the concurrent struct
 struct cstackframe {
-  int sender_pid;
-  int recepient_pid;
-  int value;
-  int used;
-  struct cstackframe *next;
+	int sender_pid;
+	int recepient_pid;
+	int value;
+	int used;
+	struct cstackframe *next;
 };
 
 //defines a concurrent stack
 struct cstack {
-  struct cstackframe frames[10];
-  struct cstackframe *head;
-  int signalsCount;
+	struct cstackframe frames[10];
+	struct cstackframe *head;
+	int signalsCount;
 };
 
 //adds a new frame to the cstack which is initialized with
@@ -80,24 +80,24 @@ struct cstackframe *pop(struct cstack *cstack);
 
 // Per-process state
 struct proc {
-  uint sz;                     // Size of process memory (bytes)
-  pde_t* pgdir;                // Page table
-  char *kstack;                // Bottom of kernel stack for this process
-  volatile int state;          // Process state
-  int pid;                     // Process ID
-  struct proc *parent;         // Parent process
-  struct trapframe *tf;        // Trap frame for current syscall
-  struct context *context;     // swtch() here to run process
-  volatile int chan;           // If non-zero, sleeping on chan
-  int killed;                  // If non-zero, have been killed
-  struct file *ofile[NOFILE];  // Open files
-  struct inode *cwd;           // Current directory
-  char name[16];               // Process name (debugging)
-  void (*handler)(int , int );
-  struct cstack pending_signals;
-  struct trapframe trapFrameCopy;
-  int isHandlingSignal;
-  int framesUsed;
+	uint sz;                     // Size of process memory (bytes)
+	pde_t* pgdir;                // Page table
+	char *kstack;                // Bottom of kernel stack for this process
+	volatile int state;          // Process state
+	int pid;                     // Process ID
+	struct proc *parent;         // Parent process
+	struct trapframe *tf;        // Trap frame for current syscall
+	struct context *context;     // swtch() here to run process
+	volatile int chan;           // If non-zero, sleeping on chan
+	int killed;                  // If non-zero, have been killed
+	struct file *ofile[NOFILE];  // Open files
+	struct inode *cwd;           // Current directory
+	char name[16];               // Process name (debugging)
+	void (*handler)(int , int );
+	struct cstack pending_signals;
+	struct trapframe trapFrameCopy;
+	int isHandlingSignal;
+	int framesUsed;
 };
 
 // Process memory is laid out contiguously, low addresses first:
