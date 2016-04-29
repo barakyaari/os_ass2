@@ -230,7 +230,8 @@ fork(void)
 	}
 	// lock to force the compiler to emit the np->state write last.
 	pushcli();
-	cas(&np->state, EMBRYO, RUNNABLE);
+	//cas(&np->state, EMBRYO, RUNNABLE);
+	np->state = RUNNABLE;
 	popcli();
 
 	return pid;
@@ -264,8 +265,9 @@ exit(void)
 
 
 	pushcli();
-	cas(&proc->state, RUNNING, ZOMBIEn);
-
+	//cas(&proc->state, RUNNING, ZOMBIEn);
+	proc->state = ZOMBIEn;
+	
 	//reset handler:
 	proc -> handler = (void*) - 1;
 	proc->pending_signals.head = &(proc->pending_signals.frames[0]);
@@ -313,6 +315,7 @@ wait(void)
 	for (;;) {
 		proc->chan = (int)proc;
 		cas(&proc->state, RUNNING , SLEEPINGn);
+		proc->state = SLEEPINGn;
 		// Scan through table looking for zombie children.
 		havekids = 0;
 		for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
@@ -408,9 +411,10 @@ scheduler(void)
 			//if (p->state == ZOMBIE)
 			// freeproc(p);
 			if (p->state == ZOMBIEn) {
-				freeproc(p);
+				
 				if (!cas(&p->state, ZOMBIEn, ZOMBIE))
 					panic("schedualer 'cas' to ZOMBIE failed");
+				freeproc(p);
 				// Parent might be sleeping in wait().
 				wakeup1(p->parent);
 			}
