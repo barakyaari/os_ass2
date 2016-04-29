@@ -507,7 +507,7 @@ wakeup1(void *chan)
 			// Tidy up.
 			p->chan = 0;
 			cas(&p->state, SLEEPING, RUNNABLE);
-			cas(&p->state, SLEEPINGn, -RUNNABLEn);
+			cas(&p->state, SLEEPINGn, RUNNABLEn);
 		}
 }
 
