@@ -231,7 +231,7 @@ fork(void)
 	// lock to force the compiler to emit the np->state write last.
 	pushcli();
 	//cas(&np->state, EMBRYO, RUNNABLE);
-	np->state = RUNNABLE;
+	while(!cas(&np->state,EMBRYO,RUNNABLE));
 	popcli();
 
 	return pid;
