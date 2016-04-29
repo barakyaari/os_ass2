@@ -446,29 +446,6 @@ forkret(void)
 	// Return to "caller", actually trapret (see allocproc).
 }
 
-
-void
-sleep3(void *chan, struct spinlock *lk)
-{
-	struct proc * p = proc;
-	if (proc == 0)
-		panic("sleep");
-
-	if (lk == 0)
-		panic("sleep without lk");
-
-	pushcli();
-	release(lk);
-	proc->chan = (int)chan;
-	proc->state = SLEEPINGn;
-	p++;
-
-	sched();
-	popcli();
-	acquire(lk);
-	//}
-}
-
 // Atomically release lock and sleep on chan.
 // Reacquires lock when awakened.
 void
