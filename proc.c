@@ -319,6 +319,10 @@ wait(void)
 			if (p->parent != proc)
 				continue;
 			havekids = 1;
+			//Avoid zombie busywait:
+	      	while (p->state == ZOMBIEn){
+	      	}
+
 			if (p->state == ZOMBIE) {
 				// Found one.
 				cas(&p->state, ZOMBIE, UNUSEDn);
