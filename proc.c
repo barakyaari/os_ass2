@@ -395,24 +395,22 @@ scheduler(void)
 			switchuvm(p);
 			p->state = RUNNING;
 			swtch(&cpu->scheduler, proc->context);
+						//if a signal was caught
+			cas(&p->state, RUNNABLEn, RUNNABLE);
+			cas(&p->state, SLEEPINGn, SLEEPING);
+
 			switchkvm();
 
 			// Process is done running for now.
 			// It should have changed its p->state before coming back.
 			proc = 0;
 
-			//if a signal was caught
-			cas(&p->state, RUNNABLEn, RUNNABLE);
-			cas(&p->state, SLEEPINGn, SLEEPING);
 
 			//if (p->state == ZOMBIE)
 			// freeproc(p);
 			if (p->state == ZOMBIEn) {
 				freeproc(p);
-				if (!cas(&p->state, ZOMBIEn, ZOMBIE))
-					panic("schedualer 'cas' to ZOMBIE failed");
-				// Parent might be sleeping in wait().
-				wakeup1(p->parent);
+				p->state = ZOMBIE;
 			}
 		}
 		popcli();
