@@ -282,12 +282,8 @@ exit(void)
 	for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
 		if (p->parent == proc) {
 			p->parent = initproc;
-
 			//Avoid zombien child:
-			while(p->state == ZOMBIEn){
-
-			}
-
+			while(p->state == ZOMBIEn);
 			if (cas(&p->state, ZOMBIE, ZOMBIE)){
 				wakeup1(initproc);
 			}
@@ -312,7 +308,7 @@ wait(void)
 	pushcli();
 	for (;;) {
 		proc->chan = (int)proc;
-		cas(&proc->state, RUNNING , SLEEPINGn);
+		while(!cas(&proc->state, RUNNING, SLEEPINGn));
 		// Scan through table looking for zombie children.
 		havekids = 0;
 		for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
@@ -334,7 +330,6 @@ wait(void)
 				proc->chan = 0;
 				cas(&proc->state, SLEEPINGn, RUNNING);
 				cas(&proc->state, RUNNABLEn, RUNNING);
-
 				popcli();
 				return pid;
 			}
