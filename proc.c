@@ -484,10 +484,9 @@ sleep(void *chan, struct spinlock *lk)
 		panic("sleep without lk");
 	}
 	pushcli();
-	release(lk);
-
 	proc->chan = (int)chan;
 	cas(&proc->state, RUNNING , SLEEPINGn);
+	release(lk);
 	sched();
 	popcli();
 	acquire(lk);
